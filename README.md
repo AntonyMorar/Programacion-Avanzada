@@ -1,7 +1,6 @@
 # Programación-Avanzada
 Creado: @antony999k
 
-[![version](https://img.shields.io/badge/version-1.0.0-ff69b4.svg)]()
 [![Awesome](https://cdn.rawgit.com/sindresorhus/awesome/d7305f38d29fed78fa85652e3a63e154dd8e8829/media/badge.svg)](https://github.com/wasabeef/awesome-android-ui)
 
 Conocimiento avanzado de desarrollo de programas en C, Debuggeo e implementación para el diseño y desarrollo de aplicaciones que optimizan la utilización del sistema operativo; Amplio conocimiento de los procesos de adminstración del sistema operativo y técnicas de sicronización y comunicación a tráves de procesos.
