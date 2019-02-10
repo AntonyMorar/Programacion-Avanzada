@@ -48,6 +48,5 @@ int main(int argc, char **argv) {
     writeImageFile(fileNameResult, finalImg);
     freeImage(&inputImage);
     freeImage(finalImg);
-    
     return 0;
 }
