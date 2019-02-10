@@ -23,7 +23,7 @@ struct Image{
 void readImageFile(char *fileName, struct Image *inputImage);
 void writeImageFile(char *fileNameResult, struct Image *inputImage);
 void negativeImage(struct Image *inputImage);
-void scaleImage(int scaleFactor, struct Image *inputImage);
+struct Image* scaleImage(int scaleFactor, struct Image *inputImage);
 void allocImage(struct Image *image);
 void freeImage(struct Image *image);
 

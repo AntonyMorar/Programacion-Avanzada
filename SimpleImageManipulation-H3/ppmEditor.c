@@ -8,6 +8,7 @@
 
 #include "ppmEditor.h"
 #include <stdlib.h>
+#include <string.h>
 /* Read the image file and save in the Image struct
  *********************************************************/
 void readImageFile(char *fileName, struct Image *inputImage){
@@ -19,14 +20,14 @@ void readImageFile(char *fileName, struct Image *inputImage){
         printf("no such file.\n");
         return;
     }
-    fgets(inputImage->ppmType, 3, imageFile);
+    fgets(inputImage->ppmType, 3, imageFile); //Scan de headers in the file
     fscanf(imageFile, "%i",&inputImage->width);
     fscanf(imageFile, "%i",&inputImage->height);
     fscanf(imageFile, "%i",&inputImage->maxVal);
     fscanf(imageFile, "%i",&imageValue);
     allocImage(inputImage);
     
-    for (int i= 0; i<inputImage->height; i++) {
+    for (int i= 0; i<inputImage->height; i++) { //Scan the pixels matrix in the file and save in the matrix struct
         for (int j = 0; j<inputImage->width; j++) {
             fread(&inputImage->matrix[i][j].r, 1, 1, imageFile);
             fread(&inputImage->matrix[i][j].g, 1, 1, imageFile);
@@ -51,6 +52,7 @@ void writeImageFile(char *fileNameResult, struct Image *inputImage){
     
     for (int i= 0; i<inputImage->height; i++) {
         for (int j = 0; j<inputImage->width; j++) {
+            //printf("g: %i\n", &inputImage->matrix[i][j].g);
             fwrite(&inputImage->matrix[i][j].r, 1, 1, outputImageFile);
             fwrite(&inputImage->matrix[i][j].g, 1, 1, outputImageFile);
             fwrite(&inputImage->matrix[i][j].b, 1, 1, outputImageFile);
@@ -70,40 +72,32 @@ void negativeImage(struct Image *inputImage){
         }
     }
 }
-/* Scale the image to any scale factor
+/* Scale the image to any scale factor, return pointer to free memory in main
  *********************************************************/
-void scaleImage(int scaleFactor, struct Image *inputImage){
+struct Image* scaleImage(int scaleFactor, struct Image *inputImage){
     float scale = (float)scaleFactor/100;
-    if(scale == 1) return; //Check if image needs to scale
-    struct Image newImage;
-    void *pointerHelper;
+    struct Image *newImage;
+    newImage = malloc(sizeof(struct Image));
     
-    strcpy(newImage.ppmType, inputImage->ppmType);
-    newImage.height = inputImage->height * scale;
-    newImage.width = inputImage->width * scale;
-    newImage.maxVal = inputImage->maxVal;
+    strncpy(newImage->ppmType, inputImage->ppmType, 2);
+    newImage->height = inputImage->height * scale;
+    newImage->width = inputImage->width * scale;
+    newImage->maxVal = inputImage->maxVal;
     
-    if(newImage.height == 0 || newImage.width == 0) printf("***** ERROR: The scale is too small\n\t THE IMAGE WASN´T SCALED *****\n");
-    
-    allocImage(&newImage);
+    if(newImage->height == 0 || newImage->width == 0) printf("***** ERROR: The scale is too small\n\t THE IMAGE WASN´T SCALED *****\n");
+
+    allocImage(newImage);
     
     if(scale > 0){
-        for (int i= 0; i<newImage.height; i++) {
-            for (int j = 0; j<newImage.width; j++) {
-                newImage.matrix[i][j] = inputImage->matrix[(int)(i/scale)][(int)(j/scale)];
+        for (int i= 0; i<newImage->height; i++) {
+            for (int j = 0; j<newImage->width; j++) {
+                newImage->matrix[i][j] = inputImage->matrix[(int)(i/scale)][(int)(j/scale)];
             }
         }
     }else{
         printf("***** ERROR: Program can´t have a negative scale factor, to reduce th image,apply scale between 0 and 100\n\tTHE IMAGE WASN´T SCALED *****\n");
     }
-    
-    printf("    Size: %d * %d\n", inputImage->height, inputImage->width);
-    printf("    Pointer: %p\n", inputImage);
-    pointerHelper = inputImage;
-    *inputImage = newImage; //Image now have the direction of the new image, image is equal to new image
-    freeImage(&newImage); //Free the memory of newImage
-    printf("New Pointer: %p\n", inputImage);
-    printf("New Size: %d * %d\n", inputImage->height, inputImage->width);
+    return newImage; //return new image with new size
 }
 /* Reserve memomry for an image struct and his Pixel matrix
  *********************************************************/

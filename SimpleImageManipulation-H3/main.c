@@ -29,21 +29,25 @@ int main(int argc, char **argv) {
             case 'n'://Use if you want to generate the negative of the image
                 negative = true;
                 break;
-            case '?':
-                fprintf (stderr, "Unknown option character `\\x%x'.\n", optopt);
-                return 1;
             default:
                 abort ();
         }
     
+    if(fileName == NULL && fileNameResult == NULL){
+        printf ("Arguments -i and -o are required.\n");
+        return 1;
+    }
+    
     printf("************* Image Manipulation Program ****************\n");
     struct Image inputImage;
+    //void * aaa = (void *)0x7ffeefbff430;
     
     readImageFile(fileName, &inputImage);
     if(negative == true) negativeImage(&inputImage);
-    scaleImage(scaleFactor, &inputImage);
-    printf("New Pointer: %p\n", &inputImage);
-    writeImageFile(fileNameResult, &inputImage);
+    struct Image *finalImg = scaleImage(scaleFactor, &inputImage);
+    writeImageFile(fileNameResult, finalImg);
     freeImage(&inputImage);
+    freeImage(finalImg);
+    
     return 0;
 }
