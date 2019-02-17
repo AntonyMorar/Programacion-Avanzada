@@ -6,21 +6,17 @@
 //  Copyright © 2019 Antony999k. All rights reserved.
 //
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <unistd.h> // Library to access POSIX functions
-#include <string.h>
 #include <stdbool.h>
 #include <sys/wait.h>
-
-#define BUFFER_SIZE 511
+#include "rail_fence.h"
 
 /* Function declarations
  *********************************************************/
 void parentMenu(FILE * fp_out, FILE * fp_in);
 void childProcess(FILE * fp_out, FILE * fp_in);
 
-/* Function tu close the unesessary channels
+/* Function tu close the unesessary channels and open the pipe files
  *********************************************************/
 void preparePipes(int pipe_out[], int pipe_in[], FILE ** fp_out, FILE ** fp_in){
     close(pipe_in[1]); // Close the unwanted channels
@@ -54,11 +50,10 @@ void closePipes(int pipe_out[], int pipe_in[], FILE ** fp_out, FILE ** fp_in){
  *********************************************************/
 void parentMenu(FILE * fp_out, FILE * fp_in){
     printf("Entra al padre\n");
-    char buffer[BUFFER_SIZE];
+    char buffer[BUFFER_SIZE], process[BUFFER_SIZE];
     char fileName[BUFFER_SIZE]; //File name max length size 255
     bool openMenu = true;
     int selection, rails = 0;
-    char * process = NULL;
 
     printf("================= MENU =================\n");
     while (openMenu) {
@@ -78,8 +73,8 @@ void parentMenu(FILE * fp_out, FILE * fp_in){
                 fflush(fp_out);
                 
                 //Read from child
-                fscanf(fp_in, "%d", &rails);
-                printf("The result sent by child is %d\n", rails);
+                fscanf(fp_in, "%s %s", buffer, process);
+                printf("\n******* The child %s the file, new output is: %s *******\n\n",process, fileName);
                 break;
             case 3:
                 printf("Bye :)\n");
@@ -94,18 +89,27 @@ void parentMenu(FILE * fp_out, FILE * fp_in){
 
 void childProcess(FILE * fp_out, FILE * fp_in){
     printf("Entra al hijo\n");
-    char buffer[BUFFER_SIZE];
+    char fileName[BUFFER_SIZE];
     //bool openPipe = true;
     int rails = 0, encode;
     char * process = NULL;
     
     while (1) {
-        fscanf(fp_in, "%s %d %d", buffer, &rails, &encode);
         //Read from parent
-        printf("estoy en el hijo y recibí: %s %d encode: %d\n", buffer, rails, encode);
-        if (encode == 1) {process = "encode";} else if(encode == 2){process = "decode";}else{break;} //write a string to personalize the output print
+        fscanf(fp_in, "%s %d %d", fileName, &rails, &encode);
+        //Rail Fence Cipher process
+        if (encode == 1) {
+            process = "encode";
+            railFence(fileName, rails, encode);
+            
+        } else if(encode == 2){
+            process = "decode";
+            railFence(fileName, rails, encode);
+        }else{
+            break;
+        }
         //Write to parent
-        fprintf(fp_out, "%d\n",(rails*5));
+        fprintf(fp_out, "%s %s\n",fileName, process);
         fflush(fp_out);
     }
 }
