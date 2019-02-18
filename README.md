@@ -9,6 +9,8 @@ Conocimiento avanzado de desarrollo de programas en C, Debuggeo e implementació
 - Random numbers
 - Numerical Base Conversion
 - Matrix Multiplication in files
+- Simple Image Manipulation
+- Rail Fence Cipher
 
 ## Guía de estilos
 ### Mensajes en los Commits de Git
