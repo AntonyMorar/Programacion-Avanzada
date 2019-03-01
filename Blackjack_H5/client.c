@@ -18,7 +18,7 @@
 #include "sockets.h"
 
 // Constant values
-#define BUFFER_SIZE 200
+#define BUFFER_SIZE 300
 #define DEFAULT_PORT 8989
 
 // Function declarations
@@ -48,6 +48,7 @@ void usage(char * program){
 void communicationLoop(int connection_fd){
     char buffer[BUFFER_SIZE];
     int chars_read = 0;
+    int bufferSize = 0;
     // First Handshake
     chars_read = recvMessage(connection_fd, buffer, BUFFER_SIZE);
     printf("%s", buffer);
@@ -60,43 +61,15 @@ void communicationLoop(int connection_fd){
         if (chars_read <= 0){
             break;
         }
-        if (!strncmp(buffer, "BUST", 5)){
-            printf("You Lose\n");
-            break;
-        }else if(!strncmp(buffer, "WIN", 4)){
-            printf("You Win!\n");
-            break;
-        }else if(!strncmp(buffer, "TIE", 4)){
-            printf("It´s a Tie\n");
+        printf("%s",buffer);
+        bufferSize = (int)strlen(buffer);
+        //Check if the round in the game ends
+        if('~' == buffer[bufferSize-1]){
             break;
         }
-        printf("%s",buffer);
         printf("Select an option: 1) Hit, 2) Stand 3) Double Down: ");
         scanf("%s", buffer);
         send(connection_fd, buffer, strlen(buffer)+1, 0);
-        
-        
-        /*
-        // Get the reply from the server
-        chars_read = recvMessage(connection_fd, buffer, BUFFER_SIZE);
-        if (chars_read <= 0){
-            break;
-        }
-        
-        printf("Select an option: 1) Stand, 2) Hit 3) Double Down");
-        // Prepare the message
-        scanf("%s", buffer);
-        send(connection_fd, buffer, strlen(buffer)+1, 0);
-        
-        // Give feedback to the user
-        printf("%s\n", buffer);
-        // Finish when the game is won
-        if (!strncmp(buffer, "Right", 6))
-        {
-            printf("Congratulations!\n");
-            break;
-        }
-        */
     }
     
     // Close the socket to the client

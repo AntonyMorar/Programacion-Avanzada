@@ -21,7 +21,7 @@
 
 // Constant values
 #define MAX_QUEUE 5
-#define BUFFER_SIZE 200
+#define BUFFER_SIZE 300
 #define DEFAULT_PORT 8989
 
 // Function declarations
@@ -29,6 +29,10 @@ void usage(char * program);
 void waitForConnections(int server_fd);
 void communicationLoop();
 //Blakcjack functions
+int getDeckCard();
+void giveCard(Hand *player_hand);
+void initPlayerHand(Hand *player_hand);
+void reviewHand(Hand *player_hand);
 
 int main(int argc, char * argv[]){
     if (argc != 2){
@@ -95,8 +99,159 @@ void waitForConnections(int server_fd){
     close(server_fd);
 }
 
+void communicationLoop(int connection_fd){
+    srand(time(NULL)); // Initialization time for change random cards
+    char buffer[BUFFER_SIZE];
+    char tempText[BUFFER_SIZE];
+    int chars_read = 0;
+    int userSelection = 0;
+    bool roundOpen = true;
+    Player dealer;
+    Player player;
+    Hand dealer_hand;
+    Hand player_hand;
+    
+    // First Handshake
+    send(connection_fd, "-- You join to the table\n", strlen("-- You join to the table\n")+1, 0);
+    chars_read = recvMessage(connection_fd, buffer, BUFFER_SIZE);
+    
+    printf("Game started, the table is closed\n");
+    initPlayerHand(&dealer_hand);
+    initPlayerHand(&player_hand);
+    giveCard(&dealer_hand);
+    giveCard(&player_hand);
+    giveCard(&dealer_hand);
+    giveCard(&player_hand);
+    reviewHand(&player_hand);
+    reviewHand(&dealer_hand);
+    sscanf(buffer, "%d", &player_hand.bet);
+    printf("Player bet $%d\n", player_hand.bet);
+    
+    printf("-- Dealer cards: %i, %i -- Total:%i -- Hand type: %i\n", dealer_hand.hand[0], dealer_hand.hand[1], dealer_hand.handValue, dealer_hand.handType);
+    printf("-- Player cards: %i, %i -- Total:%i --Hand type: %i\n", player_hand.hand[0], player_hand.hand[1], player_hand.handValue, player_hand.handType);
+    sprintf(buffer, "****** Dealer ******\ncards: X(hidden), %i\ntotal: %i\n****** Player ******\ncards: %i, %i\ntotal: %i\n\n", dealer_hand.hand[1],dealer_hand.handValue - dealer_hand.hand[0], player_hand.hand[0], player_hand.hand[1],player_hand.handValue);
+    
+    if(player_hand.handType == 3 && dealer_hand.handType != 3){//Check if is blackjack
+        printf("-- Player get Blackjack\n");
+        sprintf(tempText, "BLACKJACK! You win\n~");
+        strcat(buffer, tempText);
+        roundOpen = false;
+    }
+    send(connection_fd, buffer, strlen(buffer)+1, 0);
+    
+    while(roundOpen){
+        // Get the acction from the user
+        chars_read = recvMessage(connection_fd, buffer, BUFFER_SIZE);
+        if (chars_read <= 0)
+            break;
+        //Player selects the turn option
+        sscanf(buffer, "%d", &userSelection);
+        printf("The player select: %i\n", userSelection);
+        
+        sprintf(buffer, "\n\n------------ Table movements ------------\n");
+        
+        switch (userSelection) {
+            case 1: //User selection equals to hit
+                giveCard(&player_hand);
+                reviewHand(&player_hand);
+                printf("-- Player receive the card %d, total: %d\n",player_hand.hand[player_hand.cardCounter-1], player_hand.handValue);
+                sprintf(tempText, "-- You receive the card: %d\n",player_hand.hand[player_hand.cardCounter-1]);
+                strcat(buffer, tempText);
+                if(player_hand.handType == 1){//If the player overcome the 21
+                    printf("The player lose with hand value: %d\n", player_hand.handValue);
+                    sprintf(tempText, "LOSE!\n~");
+                    strcat(buffer, tempText);
+                    send(connection_fd, buffer, strlen(buffer)+1, 0);
+                    roundOpen = false;
+                }
+                break;
+            case 2: //User selection equals to stand
+                if (player_hand.handValue < dealer_hand.handValue) {
+                    printf("The player lose with hand value: %d\n", player_hand.handValue);
+                    sprintf(tempText, "-- Total hand of the dealer: %d\n-- Your hand: %d\n",dealer_hand.handValue, player_hand.handValue);
+                    strcat(buffer, tempText);
+                    sprintf(tempText, "You LOSE!\n~");
+                    strcat(buffer, tempText);
+                    send(connection_fd, buffer, strlen(buffer)+1, 0);
+                    roundOpen = false;
+                }else{
+                    while (dealer_hand.handValue <= 16) {
+                        giveCard(&dealer_hand);
+                        reviewHand(&player_hand);
+                        printf("-- Dealer take the card: %d, total: %d\n",dealer_hand.hand[dealer_hand.cardCounter-1], dealer_hand.handValue);
+                        sprintf(tempText, "-- Dealer takes the card: %d\n",dealer_hand.hand[dealer_hand.cardCounter-1]);
+                        strcat(buffer, tempText);
+                    }
+                    if(dealer_hand.handType == 1 || dealer_hand.handValue < player_hand.handValue){
+                        printf("The player win with hand value: %d\n", player_hand.handValue);
+                        sprintf(tempText, "-- Total hand of the dealer: %d\n-- Your hand: %d\n",dealer_hand.handValue, player_hand.handValue);
+                        strcat(buffer, tempText);
+                        sprintf(tempText, "You WIN!\n~");
+                        strcat(buffer, tempText);
+                        send(connection_fd, buffer, strlen(buffer)+1, 0);
+                        roundOpen = false;
+                    }else if(dealer_hand.handValue > player_hand.handValue){
+                        printf("The player lost with hand value: %d\n", player_hand.handValue);
+                        sprintf(tempText, "-- Total hand of the dealer: %d\n-- Your hand: %d\n",dealer_hand.handValue, player_hand.handValue);
+                        strcat(buffer, tempText);
+                        sprintf(tempText, "You LOSE!\n~");
+                        strcat(buffer, tempText);
+                        send(connection_fd, buffer, strlen(buffer)+1, 0);
+                        roundOpen = false;
+                    }else{
+                        printf("TIE: player: %d, dealer %d\n", player_hand.handValue, dealer_hand.handValue);
+                        sprintf(tempText, "-- Total hand of the dealer: %d\n-- Your hand: %d\n",dealer_hand.handValue, player_hand.handValue);
+                        strcat(buffer, tempText);
+                        sprintf(tempText, "You TIE!\n~");
+                        strcat(buffer, tempText);
+                        send(connection_fd, buffer, strlen(buffer)+1, 0);
+                        roundOpen = false;
+                    }
+                }
+                break;
+            default:
+                printf("Player selects an invalid option\n");
+                sprintf(buffer, "INVALID option\n");
+                send(connection_fd, buffer, strlen(buffer)+1, 0);
+                break;
+        }
+        if (roundOpen) { //Check if the round is over
+            //Save in the buffer the actual state of the cards in the table
+            sprintf(tempText, "****** Dealer ******\ncards: ");
+            strcat(buffer, tempText);
+            for (int i = 0; i<dealer_hand.cardCounter; i++) {
+                if(dealer_hand.hand[i] == 1){//Detects if the card is an Ace
+                    sprintf(tempText,"%c ", 'A');
+                    strcat(buffer, tempText);
+                }else{
+                    sprintf(tempText,"%d ", dealer_hand.hand[i]);
+                    strcat(buffer, tempText);
+                }
+            }
+            sprintf(tempText, "\ntotal: %i\n****** Player ******\ncards:", dealer_hand.handValue);
+            strcat(buffer, tempText);
+            for (int i = 0; i<player_hand.cardCounter; i++) {
+                if(player_hand.hand[i] == 1){//Detects if the card is an Ace
+                    sprintf(tempText,"%c ", 'A');
+                    strcat(buffer, tempText);
+                }else{
+                    sprintf(tempText,"%d ", player_hand.hand[i]);
+                    strcat(buffer, tempText);
+                }
+            }
+            sprintf(tempText, "\ntotal: %i\n\n", player_hand.handValue);
+            strcat(buffer, tempText);
+            send(connection_fd, buffer, strlen(buffer)+1, 0);
+        }
+    }
+    close(connection_fd);// Close the socket to the client
+}
+
 int getDeckCard(){
-    int card = rand() % 11 + 1;
+    int card = rand() % 13 + 1;
+    if(card == 11 || card == 12 || card == 13){//Increase the chances of a ten (Jack, Queen, King)
+        card = 10;
+    }
     return card;
 }
 
@@ -130,97 +285,32 @@ void giveCard(Hand *player_hand){
     }
 }
 
-void communicationLoop(int connection_fd){
-    srand(time(NULL)); // Initialization time for change random cards
-    char buffer[BUFFER_SIZE];
-    char temp[BUFFER_SIZE];
-    int chars_read = 0;
-    int userSelection = 0;
-    bool roundOpen = true;
-    Player dealer;
-    Player player;
-    Hand dealer_hand;
-    Hand player_hand;
-    
-    // First Handshake
-    send(connection_fd, "You join to the table\n", strlen("You join to the table\n")+1, 0);
-    chars_read = recvMessage(connection_fd, buffer, BUFFER_SIZE);
-    
-    printf("Game started, the table is closed\n");
-    initPlayerHand(&dealer_hand);
-    initPlayerHand(&player_hand);
-    giveCard(&dealer_hand);
-    giveCard(&player_hand);
-    giveCard(&dealer_hand);
-    giveCard(&player_hand);
-    sscanf(buffer, "%d", &player_hand.bet);
-    printf("Player bet $%d\n", player_hand.bet);
-    
-    printf("--- Dealer cards: %i, %i Hand type: %i\n", dealer_hand.hand[0], dealer_hand.hand[1], dealer_hand.handType);
-    printf("--- Player cards: %i, %i Hand type: %i\n\n", player_hand.hand[0], player_hand.hand[1], player_hand.handType);
-    
-    while(roundOpen){
-        sprintf(buffer, "***** Dealer *****\n>> cards: X(hidden), %i\n>> total: %i\n***** Player *****\n>> cards: %i, %i\n>> total: %i\n\n", dealer_hand.hand[1],dealer_hand.handValue - dealer_hand.hand[0], player_hand.hand[0], player_hand.hand[1],player_hand.handValue);
-        send(connection_fd, buffer, strlen(buffer)+1, 0);
-        
-        // Get the acction from the user
-        chars_read = recvMessage(connection_fd, buffer, BUFFER_SIZE);
-        if (chars_read <= 0)
-            break;
-        sscanf(buffer, "%d", &userSelection);
-        printf("The player select %i\n", userSelection);
-        
-        if(player_hand.handType == 3 && dealer_hand.handType != 3){
-            printf("Blackjack: %d\n", player_hand.handType);
-            sprintf(buffer, "BLACKJACK");
-            send(connection_fd, buffer, strlen(buffer)+1, 0);
-            roundOpen = false;
-        }else{
-            switch (userSelection) {
-                case 1: //User selection equals to hit
-                    giveCard(&player_hand);
-                    printf("***Player recieve %d, total: %d\n",player_hand.hand[player_hand.cardCounter-1], player_hand.handValue);
-                    if(player_hand.handType == 1){//If the player overcome the 21
-                        printf("The player lost: %d\n", player_hand.handValue);
-                        sprintf(buffer, "BUST");
-                        send(connection_fd, buffer, strlen(buffer)+1, 0);
-                        roundOpen = false;
-                    }
-                    break;
-                case 2: //User selection equals to stand
-                    if (player_hand.handValue < dealer_hand.handValue) {
-                        printf("The player lost: %d\n", player_hand.handValue);
-                        sprintf(buffer, "BUST");
-                        send(connection_fd, buffer, strlen(buffer)+1, 0);
-                        roundOpen = false;
-                    }else{
-                        while (dealer_hand.handValue <= 16) {
-                            giveCard(&dealer_hand);
-                            printf("****Entra a loop de give cartas dealer: %d\n", dealer_hand.handValue);
-                        }
-                        if(dealer_hand.handType == 1 || dealer_hand.handValue < player_hand.handValue){
-                            printf("The player win: %d\n", player_hand.handValue);
-                            sprintf(buffer, "WIN");
-                            send(connection_fd, buffer, strlen(buffer)+1, 0);
-                            roundOpen = false;
-                        }else if(dealer_hand.handValue > player_hand.handValue){
-                            printf("The player lost: %d\n", player_hand.handValue);
-                            sprintf(buffer, "BUST");
-                            send(connection_fd, buffer, strlen(buffer)+1, 0);
-                            roundOpen = false;
-                        }else{
-                            printf("TIE: player: %d, dealer %d\n", player_hand.handValue, dealer_hand.handValue);
-                            sprintf(buffer, "TIE");
-                            send(connection_fd, buffer, strlen(buffer)+1, 0);
-                            roundOpen = false;
-                        }
-                    }
-                    break;
-                default:
-                    printf("Select one of the options\n");
-                    break;
-            }
+//Changes the value of an Ace depending on the hand
+void reviewHand(Hand *player_hand){
+    int aceInHand = 0; //0) Not exist, 1)As value 1, 2)As value 11
+    for (int i = 0; i<player_hand->cardCounter; i++) {//Check if exist an ace in the hand
+        printf("======== reviewHand: %i", player_hand->hand[i]);
+        if (player_hand->hand[i] == 1) {
+            aceInHand = 1;
+        }else if(player_hand->hand[i] == 11){
+            aceInHand = 2;
         }
     }
-    close(connection_fd);// Close the socket to the client
+    if (aceInHand == 1 && (player_hand->handValue+10) <= 21) { //Check if the Ace can be 11
+        for (int i = 0; i<player_hand->cardCounter; i++) {
+            if(player_hand->hand[i] == 1){
+                player_hand->hand[i] = 11;
+            }
+        }
+        player_hand->handValue += 10;
+    }else if(aceInHand == 2 && player_hand->handValue > 21){ //Chack if the Ace can be 1
+        for (int i = 0; i<player_hand->cardCounter; i++) {
+            if(player_hand->hand[i] == 11){
+                player_hand->hand[i] = 1;
+            }
+        }
+        player_hand->handValue -= 10;
+    }else{
+        return;
+    }
 }
