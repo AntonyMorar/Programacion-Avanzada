@@ -49,29 +49,37 @@ void communicationLoop(int connection_fd){
     char buffer[BUFFER_SIZE];
     int chars_read = 0;
     int bufferSize = 0;
+    int deal = 0;
     // First Handshake
-    chars_read = recvMessage(connection_fd, buffer, BUFFER_SIZE);
-    printf("%s", buffer);
-    printf("Insert deal amount: ");
-    scanf("%s", buffer);
-    send(connection_fd, buffer, strlen(buffer)+1, 0);
     
-    while(1){
+    while (1) {
         chars_read = recvMessage(connection_fd, buffer, BUFFER_SIZE);
-        if (chars_read <= 0){
-            break;
-        }
-        printf("%s",buffer);
-        bufferSize = (int)strlen(buffer);
-        //Check if the round in the game ends
-        if('~' == buffer[bufferSize-1]){
-            break;
-        }
-        printf("Select an option: 1) Hit, 2) Stand 3) Double Down: ");
-        scanf("%s", buffer);
+        printf("%s", buffer);
+        printf("Insert deal amount (or negative number to exit the game): ");
+        scanf("%d", &deal);
+        sprintf(buffer, "%d", deal);
         send(connection_fd, buffer, strlen(buffer)+1, 0);
+        if (deal < 0) {
+            printf("-- You leave the table, Bye! :)\n");
+            break;
+        }
+        
+        while(1){
+            chars_read = recvMessage(connection_fd, buffer, BUFFER_SIZE);
+            if (chars_read <= 0){
+                break;
+            }
+            printf("%s",buffer);
+            bufferSize = (int)strlen(buffer);
+            //Check if the round in the game ends
+            if('~' == buffer[bufferSize-1]){
+                break;
+            }
+            printf("Select an option: 1) Hit, 2) Stand 3) Double Down: ");
+            scanf("%s", buffer);
+            send(connection_fd, buffer, strlen(buffer)+1, 0);
+        }
     }
-    
     // Close the socket to the client
     close(connection_fd);
 }
