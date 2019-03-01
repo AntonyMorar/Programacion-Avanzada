@@ -11,6 +11,7 @@ Conocimiento avanzado de desarrollo de programas en C, Debuggeo e implementació
 - Matrix Multiplication in files
 - Simple Image Manipulation
 - Rail Fence Cipher
+- Blackjack 21
 
 ## Guía de estilos
 ### Mensajes en los Commits de Git
