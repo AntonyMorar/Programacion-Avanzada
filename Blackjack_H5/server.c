@@ -105,7 +105,7 @@ void communicationLoop(int connection_fd){
     char tempText[BUFFER_SIZE];
     int chars_read = 0;
     int userSelection = 0;
-    bool roundOpen = true;
+    bool roundOpen = true, dealerClose = true;
     Hand dealer_hand;
     Hand player_hand;
     
@@ -113,7 +113,7 @@ void communicationLoop(int connection_fd){
         //Resete the values
         bzero(&buffer, BUFFER_SIZE); //Clear the buffer
         bzero(&tempText, BUFFER_SIZE); //Clear the temporal text
-        chars_read = 0; userSelection=0; roundOpen=true;
+        chars_read = 0; userSelection=0; roundOpen=true, dealerClose=true;
         // First Handshake
         send(connection_fd, "\n\n******************** The table is open ********************\n", strlen("\n\n******************** The table is open ********************\n")+1, 0);
         chars_read = recvMessage(connection_fd, buffer, BUFFER_SIZE);
@@ -143,9 +143,9 @@ void communicationLoop(int connection_fd){
         printf("-- Player cards: %i, %i -- Total:%i --Hand type: %i\n", player_hand.hand[0], player_hand.hand[1], player_hand.handValue, player_hand.handType);
         sprintf(buffer, "****** Dealer ******\ncards: X(hidden), %i\ntotal: %i\n****** Player ******\ncards: %i, %i\ntotal: %i\n\n", dealer_hand.hand[1],dealer_hand.handValue - dealer_hand.hand[0], player_hand.hand[0], player_hand.hand[1],player_hand.handValue);
         
-        if(player_hand.handType == 3 && dealer_hand.handType != 3){//Check if is blackjack
+        if(player_hand.handValue == 21 && dealer_hand.handValue != 21){//Check if is blackjack
             printf("-- Player get Blackjack\n");
-            sprintf(tempText, "BLACKJACK! You win\n~");
+            sprintf(tempText, "BLACKJACK! You win $%d\n~", (int)(player_hand.bet * 1.5));
             strcat(buffer, tempText);
             roundOpen = false;
         }
@@ -175,18 +175,21 @@ void communicationLoop(int connection_fd){
                         printf("The player lose with hand value: %d\n", player_hand.handValue);
                         sprintf(tempText, "-- Total hand of the dealer: %d\n-- Your hand: %d\n",dealer_hand.handValue, player_hand.handValue);
                         strcat(buffer, tempText);
-                        sprintf(tempText, "LOSE!\n~");
+                        sprintf(tempText, "LOSE! -$%d\n~", player_hand.bet);
                         strcat(buffer, tempText);
                         send(connection_fd, buffer, strlen(buffer)+1, 0);
                         roundOpen = false;
                     }
                     break;
                 case 2: //User selection equals to stand
+                    dealerClose = false;
+                    sprintf(tempText, "-- Dealer open the first card with value: %d\n",dealer_hand.hand[0]);
+                    strcat(buffer, tempText);
                     if (player_hand.handValue < dealer_hand.handValue) {
                         printf("The player lose with hand value: %d\n", player_hand.handValue);
                         sprintf(tempText, "-- Total hand of the dealer: %d\n-- Your hand: %d\n",dealer_hand.handValue, player_hand.handValue);
                         strcat(buffer, tempText);
-                        sprintf(tempText, "You LOSE!\n~");
+                        sprintf(tempText, "You LOSE! -$%d\n~",player_hand.bet);
                         strcat(buffer, tempText);
                         send(connection_fd, buffer, strlen(buffer)+1, 0);
                         roundOpen = false;
@@ -202,7 +205,7 @@ void communicationLoop(int connection_fd){
                             printf("The player win with hand value: %d\n", player_hand.handValue);
                             sprintf(tempText, "-- Total hand of the dealer: %d\n-- Your hand: %d\n",dealer_hand.handValue, player_hand.handValue);
                             strcat(buffer, tempText);
-                            sprintf(tempText, "You WIN!\n~");
+                            sprintf(tempText, "You WIN! -$%d\n~",player_hand.bet);
                             strcat(buffer, tempText);
                             send(connection_fd, buffer, strlen(buffer)+1, 0);
                             roundOpen = false;
@@ -210,7 +213,7 @@ void communicationLoop(int connection_fd){
                             printf("The player lose with hand value: %d\n", player_hand.handValue);
                             sprintf(tempText, "-- Total hand of the dealer: %d\n-- Your hand: %d\n",dealer_hand.handValue, player_hand.handValue);
                             strcat(buffer, tempText);
-                            sprintf(tempText, "You LOSE!\n~");
+                            sprintf(tempText, "You LOSE! -$%d\n~",player_hand.bet);
                             strcat(buffer, tempText);
                             send(connection_fd, buffer, strlen(buffer)+1, 0);
                             roundOpen = false;
@@ -218,7 +221,7 @@ void communicationLoop(int connection_fd){
                             printf("TIE: player: %d, dealer %d\n", player_hand.handValue, dealer_hand.handValue);
                             sprintf(tempText, "-- Total hand of the dealer: %d\n-- Your hand: %d\n",dealer_hand.handValue, player_hand.handValue);
                             strcat(buffer, tempText);
-                            sprintf(tempText, "You TIE!\n~");
+                            sprintf(tempText, "You TIE! -$%d\n~",player_hand.bet);
                             strcat(buffer, tempText);
                             send(connection_fd, buffer, strlen(buffer)+1, 0);
                             roundOpen = false;
@@ -236,7 +239,10 @@ void communicationLoop(int connection_fd){
                 sprintf(tempText, "****** Dealer ******\ncards: ");
                 strcat(buffer, tempText);
                 for (int i = 0; i<dealer_hand.cardCounter; i++) {
-                    if(dealer_hand.hand[i] == 1){//Detects if the card is an Ace
+                    if (dealerClose && i==0) {
+                        sprintf(tempText,"%s ", "X(hidden)");
+                        strcat(buffer, tempText);
+                    }else if(dealer_hand.hand[i] == 1){//Detects if the card is an Ace
                         sprintf(tempText,"%c ", 'A');
                         strcat(buffer, tempText);
                     }else{
@@ -244,7 +250,11 @@ void communicationLoop(int connection_fd){
                         strcat(buffer, tempText);
                     }
                 }
-                sprintf(tempText, "\ntotal: %i\n****** Player ******\ncards:", dealer_hand.handValue);
+                if (dealerClose) {
+                    sprintf(tempText, "\ntotal: %i\n****** Player ******\ncards:", dealer_hand.handValue - dealer_hand.hand[0]);
+                }else{
+                    sprintf(tempText, "\ntotal: %i\n****** Player ******\ncards:", dealer_hand.handValue);
+                }
                 strcat(buffer, tempText);
                 for (int i = 0; i<player_hand.cardCounter; i++) {
                     if(player_hand.hand[i] == 1){//Detects if the card is an Ace

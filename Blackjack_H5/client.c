@@ -75,7 +75,7 @@ void communicationLoop(int connection_fd){
             if('~' == buffer[bufferSize-1]){
                 break;
             }
-            printf("Select an option: 1) Hit, 2) Stand 3) Double Down: ");
+            printf("Select an option: 1) Hit, 2) Stand: ");
             scanf("%s", buffer);
             send(connection_fd, buffer, strlen(buffer)+1, 0);
         }

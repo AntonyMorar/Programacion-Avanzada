@@ -32,8 +32,4 @@ typedef struct hand{
     int handType; //Use to know the type of cards that have the player, 0) Not defined(only one card in hand)  1) Overcome 21(Losser Hand), 2) Below or equal 21 (not blackjack), 3) Blackjack, 4)Card match(Below 21 and 2 cards in hand)
 }Hand;
 
-typedef struct player{
-    int credit;
-}Player;
-
 #endif /* SOCKETS_H */
