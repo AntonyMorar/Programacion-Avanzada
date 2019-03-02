@@ -1,0 +1,11 @@
+****** Blackjack *******
+
+To compile use the make file:
+make -f makefile
+
+To start the programs run in different terminal
+t1: ./server {your port}
+t2: ./client {localhost} {your port}
+the port must be the same
+
+In the game you can only interact int the client terminal. To start a game bet, to finish insert a negative number. 
