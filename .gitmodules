@@ -1,0 +1,6 @@
+[submodule "Blackjack/BlackjackMX"]
+	path = Blackjack/BlackjackMX
+	url = https://github.com/antony999k/BlackjackMX
+[submodule "BlackjackMX"]
+	path = BlackjackMX
+	url = https://github.com/antony999k/BlackjackMX
