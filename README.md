@@ -7,11 +7,14 @@ Conocimiento avanzado de desarrollo de programas en C, Debuggeo e implementació
 
 # Programas
 - Random numbers
-- Numerical Base Conversion
-- Matrix Multiplication in files
-- Simple Image Manipulation
-- Rail Fence Cipher
-- Blackjack 21
+- [Numerical Base Conversion](./NumericalBaseConversion-H1)
+- [Matrix Multiplication in files](./MatrixMultiplication-H2)
+- [Simple Image Manipulation](./SimpleImageManipulation-H3)
+- [Rail Fence Cipher](./RailFenceCipher_H4)
+- [Blackjack 21](./Blackjack_H5)
+- [Full Blackjack 21 (Proyecto final)](./BlackjackMX)
+
+[my directory](test_dir)
 
 ## Guía de estilos
 ### Mensajes en los Commits de Git
