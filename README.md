@@ -12,6 +12,7 @@ Conocimiento avanzado de desarrollo de programas en C, Debuggeo e implementació
 - [Simple Image Manipulation](./SimpleImageManipulation-H3)
 - [Rail Fence Cipher](./RailFenceCipher_H4)
 - [Blackjack 21](./Blackjack_H5)
+- [Sockets and Signals](./Sockets&Signals_H6)
 - [Full Blackjack 21 (Proyecto final)](./BlackjackMX)
 
 [my directory](test_dir)
