@@ -47,3 +47,9 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+#Entregables
+*.zip
+*.gzip
+.zip
+.gzip
