@@ -1,4 +1,5 @@
 /*
+    Antony Morales
     Client program to access the accounts in the bank
     This program connects to the server using sockets
 
@@ -111,7 +112,7 @@ void bankOperations(int connection_fd)
             case 'w':
                 printf("Enter source account: ");
                 scanf("%d", &account_from);
-                printf("Enter the amount to deposit: ");
+                printf("Enter the amount to withdraw: ");
                 scanf("%f", &amount);
                 operation = WITHDRAW;
                 break;
@@ -142,6 +143,7 @@ void bankOperations(int connection_fd)
 
         // SEND
         // Send the request
+        //printf("Se enviara data al server\n");
         sendString(connection_fd, buffer, strlen(buffer)+1);
 
         // RECV
