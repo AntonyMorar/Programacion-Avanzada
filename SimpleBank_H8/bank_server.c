@@ -173,7 +173,7 @@ void setupHandlers(){
 
 /*Send signal if interruption occurs and change the global variable*/
 void interruption(int signal){
-    printf("\nShutting down\n");
+    printf("\tServer down\n");
     interrupt_exit = 1;
 }
 
@@ -269,34 +269,36 @@ void waitForConnections(int server_fd, bank_t * bank_data, locks_t * data_locks)
         
         if (poll_response == -1){
             // If poll detected an error due to an interruption, exit the loop
-            if (errno == EINTR  && interrupt_exit)
-            {
+            if (errno == EINTR  && interrupt_exit){
                 printf("PROGRAM INTERRUPTED");
-            }
-            else
-            {
+            }else{
                 fatalError("ERROR: POLL");
             }
-        }else if(poll_response == 0 && interrupt_exit){
-            printf("\n\t|-SERVER DOWN\n");
-            break;
-        }else if(test_fds[0].revents && POLLIN){
-            // ACCEPT
-            // Wait for a client connection
-            client_fd = accept(server_fd, (struct sockaddr *)&client_address, &client_address_size);
-            if (client_fd == -1)
-            {
-                fatalError("ERROR: CLIENT ACCEPT");
+        }else if(poll_response == 0){
+            if(interrupt_exit){
+                printf("\n\t|-SERVER DOWN\n");
+                break;
             }
-            // Get the data from the client
-            inet_ntop(client_address.sin_family, &client_address.sin_addr, client_presentation, sizeof client_presentation);
-            printf("Received incomming connection from %s on port %d\n", client_presentation, client_address.sin_port);
-            // Prepare the structure to send to the thread
-            connection_data->connection_fd = client_fd;
-            connection_data->bank_data = bank_data;
-            connection_data->data_locks=data_locks;
-            // CREATE A THREAD
-            pthread_create(&new_tid, NULL, attentionThread, (void*) connection_data);
+        }else{
+            if(test_fds[0].revents && POLLIN){
+                // ACCEPT
+                // Wait for a client connection
+                client_fd = accept(server_fd, (struct sockaddr *)&client_address, &client_address_size);
+                if (client_fd == -1)
+                {
+                    fatalError("ERROR: CLIENT ACCEPT");
+                }
+                // Get the data from the client
+                inet_ntop(client_address.sin_family, &client_address.sin_addr, client_presentation, sizeof client_presentation);
+                printf("Received incomming connection from %s on port %d\n", client_presentation, client_address.sin_port);
+                // Prepare the structure to send to the thread
+                connection_data->connection_fd = client_fd;
+                connection_data->bank_data = bank_data;
+                connection_data->data_locks=data_locks;
+                // CREATE A THREAD
+                pthread_create(&new_tid, NULL, attentionThread, (void*) connection_data);
+            }
+
         }
     }
     
@@ -305,7 +307,7 @@ void waitForConnections(int server_fd, bank_t * bank_data, locks_t * data_locks)
     // Store any changes in the file
     printf("\t|----Saving file data\n");
     writeBankFile(bank_data);
-    //free(connection_data);
+    free(connection_data);
 }
 
 /*
@@ -347,6 +349,9 @@ void * attentionThread(void * arg){
             //printf("BUFFER: %s\n", buffer); //Print the buffer (debugg)
             sscanf(buffer, "%d %d %d %f", (int*)&(clientMsg.operation), &(clientMsg.account_from), &(clientMsg.account_to), &(clientMsg.amount));
             // Process the request being careful of data consistency
+            if(interrupt_exit){
+                break;
+            }
             if(clientMsg.operation == EXIT){
                 printf("[%d] Client left the ATM (Conection closed)\n", (int)pthread_self());
                 break;
@@ -363,6 +368,7 @@ void * attentionThread(void * arg){
                 sendString(thread_data->connection_fd, buffer, BUFFER_SIZE);
                 continue;
             }
+        
             
  
             switch (clientMsg.operation) {
@@ -384,11 +390,12 @@ void * attentionThread(void * arg){
             // Send a reply
             if(tempBalance < 0){
                 sprintf(buffer, "%i %f",  INSUFFICIENT, 0.0);
+                printf("[%d] Transaction Code: %d refused\n", (int)pthread_self(), clientMsg.operation);
             }else{
                sprintf(buffer, "%i %f",  OK, tempBalance);
+                printf("[%d] Transaction Code: %d complete\n", (int)pthread_self(), clientMsg.operation);
             }
             sendString(thread_data->connection_fd, buffer, BUFFER_SIZE);
-            printf("[%d] Transaction Code: %d complete\n", (int)pthread_self(), clientMsg.operation);
         }
     }
     

@@ -15,6 +15,7 @@
 // Sockets libraries
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <sys/poll.h>
 // Custom libraries
 #include "bank_codes.h"
 #include "sockets.h"
@@ -74,6 +75,11 @@ void bankOperations(int connection_fd)
     char option = 'c';
     int status;
     operation_t operation;
+    //Poll variables
+    struct pollfd stdin_fds[1];
+    int timeout = 10;
+    int poll_response;
+    
 
     while (option != 'x')
     {
@@ -83,17 +89,49 @@ void bankOperations(int connection_fd)
         printf("\tw. Withdraw from account\n");
         printf("\tt. Transfer between accounts\n");
         printf("\tx. Exit program\n");
-        printf("Select an option: ");
-        scanf(" %c", &option);
+        printf("Select an option:\n");
+        
+        while (1) {
+            stdin_fds[0].fd = stdin->_file;
+            stdin_fds[0].events = POLLIN;
+            poll_response = poll(stdin_fds, 1, timeout);
+            if(poll_response == -1){
+                fatalError("POLL");
+            }else if(poll_response == 0){
+                stdin_fds[0].fd = connection_fd; //Polls detects when the server shot down
+                stdin_fds[0].events = POLLIN;
+                poll_response = poll(stdin_fds, 1, timeout);
+                if(poll_response == -1){
+                    fatalError("SERVER CONNECTION POLL");
+                }else if(poll_response == 0){continue;}
+                else{
+                    // RECV
+                    // Receive the response
+                    if ( !recvString(connection_fd, buffer, BUFFER_SIZE) )
+                    {
+                        printf("Server closed the connection\n");
+                        exit(0);
+                    }
+                    // Extract the data
+                    sscanf(buffer, "%d %f", &status, &balance);
+                    if(status == BYE){
+                        printf("\nServer Down!\n");
+                        exit(0);
+                    }
+                }
+            }else{
+                scanf(" %c", &option);
+                break;
+            }
+        }
 
         // Init variables to default values
         account_from = 0;
         account_to = 0;
         amount = 0;
         balance = 0;
-
-        switch(option)
-        {
+        
+        switch(option){
             // Check balance
             case 'c':
                 printf("Enter account: ");
@@ -140,12 +178,10 @@ void bankOperations(int connection_fd)
 
         // Prepare the message to the server
         sprintf(buffer, "%d %d %d %f", operation, account_from, account_to, amount);
-
         // SEND
         // Send the request
-        //printf("Se enviara data al server\n");
         sendString(connection_fd, buffer, strlen(buffer)+1);
-
+        
         // RECV
         // Receive the response
         if ( !recvString(connection_fd, buffer, BUFFER_SIZE) )
@@ -155,6 +191,7 @@ void bankOperations(int connection_fd)
         }
         // Extract the data
         sscanf(buffer, "%d %f", &status, &balance);
+
         // Print the result
         switch (status)
         {
