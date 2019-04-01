@@ -305,6 +305,7 @@ void waitForConnections(int server_fd, bank_t * bank_data, locks_t * data_locks)
     // Store any changes in the file
     printf("\t|----Saving file data\n");
     writeBankFile(bank_data);
+    //free(connection_data);
 }
 
 /*
@@ -387,7 +388,7 @@ void * attentionThread(void * arg){
                sprintf(buffer, "%i %f",  OK, tempBalance);
             }
             sendString(thread_data->connection_fd, buffer, BUFFER_SIZE);
-            printf("[%d] Transaction %d complete\n", (int)pthread_self(), clientMsg.operation);
+            printf("[%d] Transaction Code: %d complete\n", (int)pthread_self(), clientMsg.operation);
         }
     }
     
@@ -430,8 +431,18 @@ float getBalance(thread_data_t* thread_data, int accountNumber){
 
 //Deposit money from one account
 float depositToAccount(thread_data_t* thread_data, int account, float amount){
+    //Lock
+    pthread_mutex_t accountLock = thread_data->data_locks->account_mutex[account];
+    pthread_mutex_t transaction = thread_data->data_locks->transactions_mutex;
+    
+    //Operations
     float clientBalance = thread_data->bank_data->account_array[account].balance += amount;
     thread_data->bank_data->total_transactions++;
+    
+    //Unlock
+    pthread_mutex_unlock(&transaction);
+    pthread_mutex_unlock(&accountLock);
+    
     return clientBalance;
 }
 
@@ -440,8 +451,17 @@ float withdrawFromAccount(thread_data_t* thread_data, int account, float amount)
     if(amount > thread_data->bank_data->account_array[account].balance){
         return -1;
     }else{
+        //Lock
+        pthread_mutex_t accountLock = thread_data->data_locks->account_mutex[account];
+        pthread_mutex_t transaction = thread_data->data_locks->transactions_mutex;
+        
         float clientBalance = thread_data->bank_data->account_array[account].balance -= amount;
         thread_data->bank_data->total_transactions++;
+        
+        //Unlock
+        pthread_mutex_unlock(&transaction);
+        pthread_mutex_unlock(&accountLock);
+        
         return clientBalance;
     }
 }
@@ -450,9 +470,20 @@ float transfer(thread_data_t* thread_data, int sourceAccount, int destAccount, f
     if(amount > thread_data->bank_data->account_array[sourceAccount].balance){
         return -1;
     }else{
+        //Lock
+        pthread_mutex_t account1Lock = thread_data->data_locks->account_mutex[sourceAccount];
+        pthread_mutex_t account2Lock = thread_data->data_locks->account_mutex[destAccount];
+        pthread_mutex_t transaction = thread_data->data_locks->transactions_mutex;
+        
         float clientBalance = thread_data->bank_data->account_array[sourceAccount].balance -= amount;
         thread_data->bank_data->account_array[destAccount].balance += amount;
         thread_data->bank_data->total_transactions++;
+        
+        //Unlock
+        pthread_mutex_unlock(&transaction);
+        pthread_mutex_unlock(&account1Lock);
+        pthread_mutex_unlock(&account2Lock);
+        
         return clientBalance;
     }
 }

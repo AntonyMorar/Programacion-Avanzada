@@ -6,7 +6,7 @@ Creado: @antony999k
 Conocimiento avanzado de desarrollo de programas en C, Debuggeo e implementación para el diseño y desarrollo de aplicaciones que optimizan la utilización del sistema operativo; Amplio conocimiento de los procesos de adminstración del sistema operativo y técnicas de sicronización y comunicación a tráves de procesos.
 
 # Programas
-- Random numbers
+- [Random numbers](./randomNumber)
 - [Numerical Base Conversion](./NumericalBaseConversion_H1)
 - [Matrix Multiplication in files](./MatrixMultiplication_H2)
 - [Simple Image Manipulation](./SimpleImageManipulation_H3)
