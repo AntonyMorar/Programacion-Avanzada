@@ -7,9 +7,9 @@ Conocimiento avanzado de desarrollo de programas en C, Debuggeo e implementació
 
 # Programas
 - Random numbers
-- [Numerical Base Conversion](./NumericalBaseConversion-H1)
-- [Matrix Multiplication in files](./MatrixMultiplication-H2)
-- [Simple Image Manipulation](./SimpleImageManipulation-H3)
+- [Numerical Base Conversion](./NumericalBaseConversion_H1)
+- [Matrix Multiplication in files](./MatrixMultiplication_H2)
+- [Simple Image Manipulation](./SimpleImageManipulation_H3)
 - [Rail Fence Cipher](./RailFenceCipher_H4)
 - [Blackjack 21](./Blackjack_H5)
 - [Sockets and Signals](./Sockets&Signals_H6)

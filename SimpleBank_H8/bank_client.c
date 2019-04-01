@@ -155,7 +155,6 @@ void bankOperations(int connection_fd)
         }
         // Extract the data
         sscanf(buffer, "%d %f", &status, &balance);
-
         // Print the result
         switch (status)
         {

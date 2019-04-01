@@ -50,6 +50,8 @@ typedef struct bank_struct {
     int total_transactions;
     // An array of the accounts
     account_t * account_array;
+    // A total number of accounts
+    int accountNumber;
 } bank_t;
 
 // Structure for the mutexes to keep the data consistent
@@ -98,7 +100,8 @@ float depositToAccount(thread_data_t* thread_data, int account, float amount);
 float withdrawFromAccount(thread_data_t* thread_data, int account, float amount);
 float transfer(thread_data_t* thread_data, int sourceAccount, int destAccount, float amount);
 void interruption(int signal);
-int getTotalTransactions();
+int getTotalTransactions(bank_t* bank_data);
+void writeBankFile(bank_t * bank_data);
 
 ///// MAIN FUNCTION
 int main(int argc, char * argv[])
@@ -182,6 +185,7 @@ void initBank(bank_t * bank_data, locks_t * data_locks)
 {
     // Set the number of transactions
     bank_data->total_transactions = 0;
+    bank_data->accountNumber = 0;
     
     // Allocate the arrays in the structures
     bank_data->account_array = malloc(MAX_ACCOUNTS * sizeof (account_t));
@@ -226,6 +230,7 @@ void readBankFile(bank_t * bank_data)
     while( fgets(buffer, BUFFER_SIZE, file_ptr) )
     {
         sscanf(buffer, "%d %d %f", &bank_data->account_array[account].id, &bank_data->account_array[account].pin, &bank_data->account_array[account].balance);
+        bank_data->accountNumber++;
         account++;
     }
     
@@ -241,7 +246,7 @@ void waitForConnections(int server_fd, bank_t * bank_data, locks_t * data_locks)
     struct sockaddr_in client_address;
     socklen_t client_address_size;
     char client_presentation[INET_ADDRSTRLEN];
-    int client_fd;
+    int client_fd = 0;
     pthread_t new_tid;
     thread_data_t * connection_data = malloc(sizeof(thread_data_t));
     int poll_response;
@@ -273,7 +278,7 @@ void waitForConnections(int server_fd, bank_t * bank_data, locks_t * data_locks)
                 fatalError("ERROR: POLL");
             }
         }else if(poll_response == 0 && interrupt_exit){
-            printf("WARNING: SERVER DOWN\n");
+            printf("\n\t|-SERVER DOWN\n");
             break;
         }else if(test_fds[0].revents && POLLIN){
             // ACCEPT
@@ -296,8 +301,10 @@ void waitForConnections(int server_fd, bank_t * bank_data, locks_t * data_locks)
     }
     
     // Show the number of total transactions (print the total number of transactions performed in the session)
-    printf("Number of transactions in the session: %i", getTotalTransactions());
+    printf("\t|----Number of transactions in the session: %i\n", getTotalTransactions(bank_data));
     // Store any changes in the file
+    printf("\t|----Saving file data\n");
+    writeBankFile(bank_data);
 }
 
 /*
@@ -311,7 +318,7 @@ void * attentionThread(void * arg){
     char buffer[BUFFER_SIZE];
     int timeout = 100;
     int poll_response;
-    float tempBalance;
+    float tempBalance = 0;
     
     // Loop to listen for messages from the client
     while (!interrupt_exit) {
@@ -336,19 +343,33 @@ void * attentionThread(void * arg){
             }
             client_msg clientMsg; //Creates the struct for the client message
             // Receive the request
-            sscanf(buffer, "%d %d, %d, %f", (int*)&(clientMsg.operation),&(clientMsg.account_from),&(clientMsg.account_to), &(clientMsg.amount));
+            //printf("BUFFER: %s\n", buffer); //Print the buffer (debugg)
+            sscanf(buffer, "%d %d %d %f", (int*)&(clientMsg.operation), &(clientMsg.account_from), &(clientMsg.account_to), &(clientMsg.amount));
             // Process the request being careful of data consistency
             if(clientMsg.operation == EXIT){
-                printf("[%d] Client exit the ATM (Conection closed)\n", (int)pthread_self());
+                printf("[%d] Client left the ATM (Conection closed)\n", (int)pthread_self());
                 break;
             }
+            //Validate accounts
+            if(clientMsg.account_from < 0 || clientMsg.account_from > MAX_ACCOUNTS || clientMsg.account_to < 0 || clientMsg.account_to > MAX_ACCOUNTS){
+                sprintf(buffer, "%i %f",  NO_ACCOUNT, 0.0);
+                sendString(thread_data->connection_fd, buffer, BUFFER_SIZE);
+                continue;
+            }
+            //Validate ammount
+            if(clientMsg.amount < 0){
+                sprintf(buffer, "%i %f",  ERROR, 0.0);
+                sendString(thread_data->connection_fd, buffer, BUFFER_SIZE);
+                continue;
+            }
             
+ 
             switch (clientMsg.operation) {
                 case CHECK:
                     tempBalance = getBalance(thread_data, clientMsg.account_from);
                     break;
                 case DEPOSIT:
-                    tempBalance = depositToAccount(thread_data, clientMsg.account_from, clientMsg.amount);
+                    tempBalance = depositToAccount(thread_data, clientMsg.account_to, clientMsg.amount);
                     break;
                 case WITHDRAW:
                     tempBalance = withdrawFromAccount(thread_data, clientMsg.account_from, clientMsg.amount);
@@ -360,9 +381,13 @@ void * attentionThread(void * arg){
                     fatalError("ERROR: NOT VALID OPERATION");
             }
             // Send a reply
-            sprintf(buffer, "%i %f",  OK, tempBalance);
+            if(tempBalance < 0){
+                sprintf(buffer, "%i %f",  INSUFFICIENT, 0.0);
+            }else{
+               sprintf(buffer, "%i %f",  OK, tempBalance);
+            }
             sendString(thread_data->connection_fd, buffer, BUFFER_SIZE);
-            printf("[%d] Transaction complete", (int)pthread_self());
+            printf("[%d] Transaction %d complete\n", (int)pthread_self(), clientMsg.operation);
         }
     }
     
@@ -371,57 +396,84 @@ void * attentionThread(void * arg){
     // Send a end reply
     sprintf(buffer, "%i %d",  BYE, 0);
     sendString(thread_data->connection_fd, buffer, BUFFER_SIZE);
-    free(thread_data);
     pthread_exit(NULL);
 }
 
 /*
  Free all the memory used for the bank data
  */
-void closeBank(bank_t * bank_data, locks_t * data_locks)
-{
+void closeBank(bank_t * bank_data, locks_t * data_locks){
     printf("DEBUG: Clearing the memory for the thread\n");
     free(bank_data->account_array);
     free(data_locks->account_mutex);
 }
 
-
 /*
  Return true if the account provided is within the valid range,
  return false otherwise
  */
-int checkValidAccount(int account)
-{
+int checkValidAccount(int account){
     return (account >= 0 && account < MAX_ACCOUNTS);
 }
 
 // Return the total transaction in te session
-int getTotalTransactions(){
-    return 6;
+int getTotalTransactions(bank_t* bank_data){
+    return bank_data->total_transactions;
 }
 
-
+//Get the balance of the mone from one account
 float getBalance(thread_data_t* thread_data, int accountNumber){
     float clientBalance = thread_data->bank_data->account_array[accountNumber].balance;
     thread_data->bank_data->total_transactions++;
     return clientBalance;
 }
 
+//Deposit money from one account
 float depositToAccount(thread_data_t* thread_data, int account, float amount){
     float clientBalance = thread_data->bank_data->account_array[account].balance += amount;
     thread_data->bank_data->total_transactions++;
     return clientBalance;
 }
 
+//withdraw money from one account
 float withdrawFromAccount(thread_data_t* thread_data, int account, float amount){
-    float clientBalance = thread_data->bank_data->account_array[account].balance -= amount;
-    thread_data->bank_data->total_transactions++;
-    return clientBalance;
+    if(amount > thread_data->bank_data->account_array[account].balance){
+        return -1;
+    }else{
+        float clientBalance = thread_data->bank_data->account_array[account].balance -= amount;
+        thread_data->bank_data->total_transactions++;
+        return clientBalance;
+    }
 }
-
+//Do the transfer operations from one to other account
 float transfer(thread_data_t* thread_data, int sourceAccount, int destAccount, float amount){
-    float clientBalance = thread_data->bank_data->account_array[sourceAccount].balance -= amount;
-    thread_data->bank_data->account_array[destAccount].balance += amount;
-    thread_data->bank_data->total_transactions++;
-    return clientBalance;
+    if(amount > thread_data->bank_data->account_array[sourceAccount].balance){
+        return -1;
+    }else{
+        float clientBalance = thread_data->bank_data->account_array[sourceAccount].balance -= amount;
+        thread_data->bank_data->account_array[destAccount].balance += amount;
+        thread_data->bank_data->total_transactions++;
+        return clientBalance;
+    }
+}
+//Write all saved bank_data into file
+void writeBankFile(bank_t * bank_data){
+    FILE * file_ptr = NULL;
+    char * filename = "accounts.txt";
+    char buffer[BUFFER_SIZE];
+    
+    file_ptr = fopen(filename, "w");
+    if (!file_ptr)
+    {
+        fatalError("ERROR: fopen");
+    }
+    
+    // Print the first line with the headers
+    fputs("Account_number PIN Balance\n", file_ptr);
+    // Print the rest of the account data
+    for(int i = 0; i<bank_data->accountNumber; i++){
+        snprintf(buffer, sizeof(buffer), "%i %i %.2f\n", bank_data->account_array[i].id, bank_data->account_array[i].pin, bank_data->account_array[i].balance);
+        fputs(buffer, file_ptr);
+    }
+    fclose(file_ptr);
 }
