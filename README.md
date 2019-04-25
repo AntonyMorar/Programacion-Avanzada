@@ -14,6 +14,7 @@ Conocimiento avanzado de desarrollo de programas en C, Debuggeo e implementació
 - [Blackjack 21](./Blackjack_H5)
 - [Sockets and Signals](./Sockets&Signals_H6)
 - [Simple Bank](./SimpleBank_H8)
+- [Image Filters](./ImageFilters_H9)
 - [Full Blackjack 21 (Proyecto final)](https://github.com/antony999k/BlackjackMX)
 
 [my directory](test_dir)
