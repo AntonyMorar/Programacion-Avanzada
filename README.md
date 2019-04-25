@@ -17,8 +17,6 @@ Conocimiento avanzado de desarrollo de programas en C, Debuggeo e implementació
 - [Image Filters](./ImageFilters_H9)
 - [Full Blackjack 21 (Proyecto final)](https://github.com/antony999k/BlackjackMX)
 
-[my directory](test_dir)
-
 ## Guía de estilos
 ### Mensajes en los Commits de Git
 
