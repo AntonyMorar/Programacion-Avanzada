@@ -25,6 +25,13 @@ typedef struct ppm_struct {
     pixel_t ** pixels;
 } ppm_t;
 
+//Struct for the kernel matrix
+typedef struct kerner_struct{
+    int size; //The kernel matrix are square, the size represent the row and column size
+    int center;
+    int ** value;
+}kernel;
+
 ///// FUNCTION DECLARATIONS
 
 // Get the memory necessary to store an image of the size indicated in the structure
@@ -32,6 +39,12 @@ void allocateMemory(ppm_t * image);
 
 // Release the memory for the image
 void freeMemory(ppm_t * image);
+
+// Get the memory necessary to store kernel matrix
+void allocateKernel(kernel * filter);
+
+// Release the memory for the kernel
+void freeKernel(kernel * filter);
 
 // Open an image file and copy its contents to the structure
 void readImageFile(char * filename, ppm_t * image);
@@ -78,5 +91,11 @@ void scaleImage(ppm_t * source, int scale);
 
 // Apply the scale to the pixels in an image
 void resizeImage(ppm_t * destination, const ppm_t * source, int scale);
+
+//Read the kernel from the file and returns a kernel struct
+void getKernel(kernel *filter, char *fileName);
+
+//Apply a filter to mconvolution matrix image
+void filterImage(ppm_t * source, char* kernel);
 
 #endif  /* NOT PPMS_H */

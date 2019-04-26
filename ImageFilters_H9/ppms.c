@@ -18,6 +18,24 @@ void allocateMemory(ppm_t * image)
     }
 }
 
+// Get the memory necessary to store kernel matrix
+void allocateKernel(kernel *filter){
+    filter->value = (int **)malloc(filter->size * sizeof(int *));
+    for(int i = 0; i<filter->size;i++){
+        filter->value[i] = malloc(filter->size * sizeof(int));
+    }
+}
+
+// Release the memory for the kernel
+void freeKernel(kernel *filter){
+    for(int i = 0; i<filter->size;i++){
+        free(filter->value[i]);
+    }
+    free(filter->value);
+    filter->size = 0;
+    filter->value = NULL;
+}
+
 // Release the memory for the image
 void freeMemory(ppm_t * image)
 {
@@ -391,4 +409,79 @@ void resizeImage(ppm_t * destination, const ppm_t * source, int scale)
 
         }
     }
+}
+
+//Read the kernel from the file and returns a kernel struct
+void getKernel(kernel *filter, char *fileName){
+    FILE * file_ptr = NULL;
+    //kernel filter;
+    int i,j;
+    
+    file_ptr = fopen (fileName, "r");
+    if (!file_ptr)
+    {
+        printf("Unable to open the kernel file '%s'\n", fileName);
+        exit(EXIT_FAILURE);
+    }
+    
+    fscanf (file_ptr, "%d", &filter->size);
+    
+    //Allocate kernel(filter) memory
+    allocateKernel(filter);
+
+    for (i=0; i<filter->size; i++) {
+        for (j=0; j<filter->size; j++) {
+            fscanf (file_ptr, "%d", &filter->value[i][j]);
+        }
+    }
+    filter->center = (int)filter->size / 2;
+    
+    fclose(file_ptr);
+}
+
+//Apply a filter to mconvolution matrix image
+void filterImage(ppm_t * source, char* kernelName){
+    ppm_t baseImage = *source; //Struct image to get the pixel values
+    kernel filter; //Struct kernel matrix
+    int rowIt,colIt, rgbIt, i,j, iTemp, jTemp;
+    int acumulator[3];
+
+    getKernel(&filter, kernelName);
+    
+    //printf("**********+** %d ******************\n", filter.center);
+    
+    for(rowIt = 0; rowIt<baseImage.height; rowIt++){
+        for(colIt = 0; colIt<baseImage.width; colIt++){
+            acumulator[R] = 0;
+            acumulator[G] = 0;
+            acumulator[B] = 0;
+            iTemp = 0; jTemp = 0;
+            
+            for (i=-filter.center; i<=filter.center; i++) {
+                for (j=-filter.center; j<=filter.center; j++) {
+                    iTemp = i + filter.center;
+                    jTemp = j + filter.center;
+
+                    if(rowIt + i>=0 && colIt + j>=0 && rowIt+i < baseImage.height && colIt + j < baseImage.width){
+                        acumulator[R] += baseImage.pixels[rowIt + i][colIt + j].data[R] * filter.value[iTemp][jTemp];
+                        acumulator[G] += baseImage.pixels[rowIt + i][colIt + j].data[G] * filter.value[iTemp][jTemp];
+                        acumulator[B] += baseImage.pixels[rowIt + i][colIt + j].data[B] * filter.value[iTemp][jTemp];
+                    }
+                }
+            }
+            
+            
+            for(rgbIt = 0; rgbIt<3; rgbIt++){
+                if(acumulator[rgbIt] < 0){
+                    source->pixels[rowIt][colIt].data[rgbIt] = 0;
+                }else if(acumulator[rgbIt] > 255){
+                    source->pixels[rowIt][colIt].data[rgbIt] = 255;
+                }else{
+                    source->pixels[rowIt][colIt].data[rgbIt] = acumulator[rgbIt];
+                }
+            }
+        }
+    }
+    //Free kernel(filter) memory
+    freeKernel(&filter);
 }
