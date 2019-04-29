@@ -491,14 +491,11 @@ void filterImageP(const ppm_t * destination, ppm_t * source, char* kernelName){
                         acumulator[R] += destination->pixels[rowIt + i][colIt + j].data[R] * filter.value[iTemp][jTemp];
                         acumulator[G] += destination->pixels[rowIt + i][colIt + j].data[G] * filter.value[iTemp][jTemp];
                         acumulator[B] += destination->pixels[rowIt + i][colIt + j].data[B] * filter.value[iTemp][jTemp];
-                        if((rowIt == 0 && colIt == 1) || (rowIt == 0 && colIt == 0)){
-                            printf("[%d][%d] = R(%d) G(%d) B(%d) * (%d) = Rf(%d) Gf(%d) Bf(%d)\n", rowIt + i, colIt+j, destination->pixels[rowIt + i][colIt + j].data[R],destination->pixels[rowIt + i][colIt + j].data[G],destination->pixels[rowIt + i][colIt + j].data[B], filter.value[iTemp][jTemp], destination->pixels[rowIt + i][colIt + j].data[R] * filter.value[iTemp][jTemp], destination->pixels[rowIt + i][colIt + j].data[G] * filter.value[iTemp][jTemp], destination->pixels[rowIt + i][colIt + j].data[B] * filter.value[iTemp][jTemp]);
-                        }
                     }
                 }
             }
-            
-            printf("Sum[%d][%d]: R(%d) G(%d) B(%d)\n", rowIt, colIt, acumulator[R], acumulator[G], acumulator[B]);
+            //Debug comment
+            //printf("Sum[%d][%d]: R(%d) G(%d) B(%d)\n", rowIt, colIt, acumulator[R], acumulator[G], acumulator[B]);
             
             for(rgbIt = 0; rgbIt<3; rgbIt++){
                 if(acumulator[rgbIt] < 0){
