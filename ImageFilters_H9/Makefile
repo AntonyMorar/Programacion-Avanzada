@@ -1,3 +1,5 @@
+# Simple example of a Makefile
+
 ### Variables for this project ###
 # These should be the only ones that need to be modified
 # The files that must be compiled, with a .o extension

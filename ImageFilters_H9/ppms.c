@@ -466,17 +466,24 @@ void filterImage(ppm_t * source, char* kernelName){
 
 }
 
-
 void filterImageP(const ppm_t * destination, ppm_t * source, char* kernelName){
     kernel filter; //Struct kernel matrix
     int rowIt,colIt, rgbIt, i,j, iTemp, jTemp;
     int acumulator[3];
     
     getKernel(&filter, kernelName);
+
+#pragma omp parallel default(none) shared(source, destination, filter)
+    {
+#pragma omp master
+    {
+        int num_threads = omp_get_num_threads();
+        printf("Running the sum in %d threads\n", num_threads);
+    }
     
-    #pragma omp parallel for private(rowIt, colIt, i,j) shared(source, destination, filter)
-    for(rowIt = 0; rowIt<destination->height; rowIt++){
-        for(colIt = 0; colIt<destination->width; colIt++){
+#pragma omp for private(iTemp, jTemp, acumulator,j,i, colIt,rgbIt)
+        for(rowIt = 0; rowIt<destination->height; rowIt++){
+            for(colIt = 0; colIt<destination->width; colIt++){
             acumulator[R] = 0;
             acumulator[G] = 0;
             acumulator[B] = 0;
@@ -494,7 +501,7 @@ void filterImageP(const ppm_t * destination, ppm_t * source, char* kernelName){
                     }
                 }
             }
-
+ 
             for(rgbIt = 0; rgbIt<3; rgbIt++){
                 if(acumulator[rgbIt] < 0){
                     source->pixels[rowIt][colIt].data[rgbIt] = 0;
@@ -504,7 +511,7 @@ void filterImageP(const ppm_t * destination, ppm_t * source, char* kernelName){
                     source->pixels[rowIt][colIt].data[rgbIt] = acumulator[rgbIt];
                 }
             }
-            
+        }
         }
     }
     //Free kernel(filter) memory
