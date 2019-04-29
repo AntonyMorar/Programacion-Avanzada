@@ -6,7 +6,7 @@
 #include<string.h>
 #include <time.h>
 #include <math.h>
-//#include <omp.h>
+#include <omp.h>
 
 // Assign constants to the colors
 typedef enum color_enum {R, G, B} color_t;

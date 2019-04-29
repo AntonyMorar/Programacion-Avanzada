@@ -474,7 +474,7 @@ void filterImageP(const ppm_t * destination, ppm_t * source, char* kernelName){
     
     getKernel(&filter, kernelName);
     
-    //#pragma omp parallel for private(rowIt,colIt,i,j) shared(source)
+    #pragma omp parallel for private(rowIt, colIt, i,j) shared(source, destination, filter)
     for(rowIt = 0; rowIt<destination->height; rowIt++){
         for(colIt = 0; colIt<destination->width; colIt++){
             acumulator[R] = 0;
@@ -494,9 +494,7 @@ void filterImageP(const ppm_t * destination, ppm_t * source, char* kernelName){
                     }
                 }
             }
-            //Debug comment
-            //printf("Sum[%d][%d]: R(%d) G(%d) B(%d)\n", rowIt, colIt, acumulator[R], acumulator[G], acumulator[B]);
-            
+
             for(rgbIt = 0; rgbIt<3; rgbIt++){
                 if(acumulator[rgbIt] < 0){
                     source->pixels[rowIt][colIt].data[rgbIt] = 0;

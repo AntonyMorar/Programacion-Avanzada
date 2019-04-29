@@ -1,5 +1,3 @@
-# Simple example of a Makefile
-
 ### Variables for this project ###
 # These should be the only ones that need to be modified
 # The files that must be compiled, with a .o extension
@@ -14,10 +12,10 @@ MAIN = test_ppm
 # The compiler program to use
 CC = gcc
 # Options to use when compiling object files
-CFLAGS = -Wall -g -std=c99 -pedantic 
+CFLAGS = -Wall -g -std=c99 -pedantic -fopenmp
 # Options to use for the final linking process
 # This one links the math library
-LDFLAGS = -lm
+LDFLAGS = -lm -lpthread -fopenmp
 
 ### The rules ###
 # These should work for most projects without change
