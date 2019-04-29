@@ -425,6 +425,7 @@ void getKernel(kernel *filter, char *fileName){
     }
     
     fscanf (file_ptr, "%d", &filter->size);
+    fscanf (file_ptr, "%d", &filter->size);
     
     //Allocate kernel(filter) memory
     allocateKernel(filter);
@@ -432,8 +433,10 @@ void getKernel(kernel *filter, char *fileName){
     for (i=0; i<filter->size; i++) {
         for (j=0; j<filter->size; j++) {
             fscanf (file_ptr, "%d", &filter->value[i][j]);
+            //printf("%d\n", filter->value[i][j]);
         }
     }
+    
     filter->center = (int)filter->size / 2;
     
     fclose(file_ptr);
@@ -441,17 +444,39 @@ void getKernel(kernel *filter, char *fileName){
 
 //Apply a filter to mconvolution matrix image
 void filterImage(ppm_t * source, char* kernelName){
-    ppm_t baseImage = *source; //Struct image to get the pixel values
+    // Local variable for an image structure
+    ppm_t destination = {"", 0, 0, 0, NULL};
+    // Copy the data
+    strncpy (destination.magic_number, source->magic_number, 3);
+    destination.max_value = source->max_value;
+    destination.height = source->height;
+    destination.width = source->width;
+    
+    allocateMemory(&destination);
+    for(int i = 0; i< destination.height; i++){
+        for (int j=0; j<destination.width; j++) {
+            destination.pixels[i][j] = source->pixels[i][j];
+        }
+    }
+    
+    filterImageP(&destination, source, kernelName);
+    
+    // Free the previous memory data
+    freeMemory(&destination);
+
+}
+
+
+void filterImageP(const ppm_t * destination, ppm_t * source, char* kernelName){
     kernel filter; //Struct kernel matrix
     int rowIt,colIt, rgbIt, i,j, iTemp, jTemp;
     int acumulator[3];
-
+    
     getKernel(&filter, kernelName);
     
-    //printf("**********+** %d ******************\n", filter.center);
-    
-    for(rowIt = 0; rowIt<baseImage.height; rowIt++){
-        for(colIt = 0; colIt<baseImage.width; colIt++){
+    //#pragma omp parallel for private(rowIt,colIt,i,j) shared(source)
+    for(rowIt = 0; rowIt<destination->height; rowIt++){
+        for(colIt = 0; colIt<destination->width; colIt++){
             acumulator[R] = 0;
             acumulator[G] = 0;
             acumulator[B] = 0;
@@ -461,15 +486,19 @@ void filterImage(ppm_t * source, char* kernelName){
                 for (j=-filter.center; j<=filter.center; j++) {
                     iTemp = i + filter.center;
                     jTemp = j + filter.center;
-
-                    if(rowIt + i>=0 && colIt + j>=0 && rowIt+i < baseImage.height && colIt + j < baseImage.width){
-                        acumulator[R] += baseImage.pixels[rowIt + i][colIt + j].data[R] * filter.value[iTemp][jTemp];
-                        acumulator[G] += baseImage.pixels[rowIt + i][colIt + j].data[G] * filter.value[iTemp][jTemp];
-                        acumulator[B] += baseImage.pixels[rowIt + i][colIt + j].data[B] * filter.value[iTemp][jTemp];
+                    
+                    if(rowIt + i>=0 && colIt + j>=0 && rowIt+i < destination->height && colIt + j < destination->width){
+                        acumulator[R] += destination->pixels[rowIt + i][colIt + j].data[R] * filter.value[iTemp][jTemp];
+                        acumulator[G] += destination->pixels[rowIt + i][colIt + j].data[G] * filter.value[iTemp][jTemp];
+                        acumulator[B] += destination->pixels[rowIt + i][colIt + j].data[B] * filter.value[iTemp][jTemp];
+                        if((rowIt == 0 && colIt == 1) || (rowIt == 0 && colIt == 0)){
+                            printf("[%d][%d] = R(%d) G(%d) B(%d) * (%d) = Rf(%d) Gf(%d) Bf(%d)\n", rowIt + i, colIt+j, destination->pixels[rowIt + i][colIt + j].data[R],destination->pixels[rowIt + i][colIt + j].data[G],destination->pixels[rowIt + i][colIt + j].data[B], filter.value[iTemp][jTemp], destination->pixels[rowIt + i][colIt + j].data[R] * filter.value[iTemp][jTemp], destination->pixels[rowIt + i][colIt + j].data[G] * filter.value[iTemp][jTemp], destination->pixels[rowIt + i][colIt + j].data[B] * filter.value[iTemp][jTemp]);
+                        }
                     }
                 }
             }
             
+            printf("Sum[%d][%d]: R(%d) G(%d) B(%d)\n", rowIt, colIt, acumulator[R], acumulator[G], acumulator[B]);
             
             for(rgbIt = 0; rgbIt<3; rgbIt++){
                 if(acumulator[rgbIt] < 0){
@@ -480,6 +509,7 @@ void filterImage(ppm_t * source, char* kernelName){
                     source->pixels[rowIt][colIt].data[rgbIt] = acumulator[rgbIt];
                 }
             }
+            
         }
     }
     //Free kernel(filter) memory

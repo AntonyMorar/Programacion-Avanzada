@@ -4,6 +4,9 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
+#include <time.h>
+#include <math.h>
+//#include <omp.h>
 
 // Assign constants to the colors
 typedef enum color_enum {R, G, B} color_t;
@@ -97,5 +100,7 @@ void getKernel(kernel *filter, char *fileName);
 
 //Apply a filter to mconvolution matrix image
 void filterImage(ppm_t * source, char* kernel);
+
+void filterImageP(const ppm_t * destination, ppm_t * source, char* kernelName);
 
 #endif  /* NOT PPMS_H */
